@@ -1,0 +1,52 @@
+-- Tested on Synapse dedicated pool.
+
+-- Data Masking using tokenization 
+
+-- drop table poc.user_sush 
+-- Source table
+Create table poc.user_sush 
+(id NUMERIC(20),
+name varchar(100),
+amount  NUMERIC(20),
+city varchar(30),
+created_date date );
+
+INSERT INTO poc.user_sush values (1,'sushant K', 100, 'Pune', '2024-08-27' );
+INSERT INTO poc.user_sush values (2,'Rame G', 200, 'Mumbai', '2024-06-22' );
+INSERT INTO poc.user_sush values (3,'Koushik K', 300, 'Delhi', '2024-07-23' );
+
+-- drop table poc.user_sush_encrypted
+Create table poc.user_sush_encrypted
+(id NUMERIC(20),
+name VARBINARY(8000),
+amount  NUMERIC(20),
+city varchar(30),
+created_date date );
+
+INSERT INTO poc.user_sush_encrypted
+select id, HASHBYTES('sha2_512',name) as name, amount, city, created_date from poc.user_sush
+;
+/*
+select id, name,
+LEN(name) as len_name,
+SUBSTRING(name,1,2) + replicate('X',LEN(name)-3 ) as encrypt
+ from poc.user_sush ;
+*/
+
+select name, HASHBYTES('sha2_512',name) masked_data from poc.user_sush;
+
+select * from   poc.user_sush_encrypted;
+
+Create table poc.tokenization
+(id INT IDENTITY(1,1),
+original_field VARCHAR(500),
+masked_field VARBINARY(8000)
+);
+
+INSERT INTO poc.tokenization
+select name, HASHBYTES('sha2_512',name) as name from poc.user_sush;
+
+select * from poc.tokenization;
+
+select a.id, b.original_field,  a.amount, a.city, a.created_date 
+from poc.user_sush_encrypted a  inner join poc.tokenization b ON  a.name = b.masked_field;
