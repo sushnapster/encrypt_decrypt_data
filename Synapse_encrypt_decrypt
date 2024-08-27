@@ -1,0 +1,49 @@
+-- Tested on Synapse
+
+DROP MASTER KEY;
+--DROP CERTIFICATE customerid1
+--drop SYMMETRIC KEY customerid_Key11
+
+ALTER MASTER KEY REGENERATE WITH ENCRYPTION BY PASSWORD = 'LYTB12345';
+GO
+
+select *  FROM sys.certificates
+select *  FROM sys.symmetric_keys
+------------------------------------------------------------------------------------
+CREATE CERTIFICATE SynapseCertificate
+WITH SUBJECT = 'Encrypt Data';
+GO
+
+CREATE SYMMETRIC KEY Cert_synapse_key
+WITH ALGORITHM = AES_256,
+IDENTITY_VALUE = 'Sushant Kale', KEY_SOURCE = 'Dev Environment'
+ENCRYPTION BY CERTIFICATE SynapseCertificate
+GO
+------------------------------------------------------------------------------------
+-- Encryption 
+OPEN SYMMETRIC KEY Cert_synapse_key DECRYPTION BY CERTIFICATE SynapseCertificate 
+UPDATE dbo.sush_encrypt 
+    SET encrypt_ccnumber = ENCRYPTBYKEY(KEY_GUID('Cert_synapse_key'), CCNUMBER) 
+    
+Select * from dbo.sush_encrypt 
+
+--------------------
+--decryption
+SET RESULT_SET_CACHING OFF
+OPEN SYMMETRIC KEY Cert_synapse_key DECRYPTION BY CERTIFICATE SynapseCertificate 
+SELECT cust_id, ccnumber,encrypt_ccnumber,
+    CONVERT(varchar, DecryptByKey( encrypt_ccnumber ) )   AS 'Decrypt_ccnumber' 
+    FROM dbo.sush_encrypt
+
+Select * from dbo.sush_encrypt 
+
+--drop table dbo.sush_encrypt ;
+--delete from dbo.sush_encrypt ;
+create table dbo.sush_encrypt (
+    cust_id INT  ,
+    ccnumber VARCHAR (50) NOT NULL,
+    encrypt_ccnumber VARBINARY(8000) )
+GO
+INSERT INTO dbo.sush_encrypt (cust_id, ccnumber) values (1,'34567');
+INSERT INTO dbo.sush_encrypt (cust_id, ccnumber) values (3,'7455945');
+GO
